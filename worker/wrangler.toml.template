@@ -8,6 +8,7 @@ PREFIX = "tmp"
 DEFAULT_DOMAINS = ["ciaooo77.dpdns.org"]
 DOMAINS = ["ciaooo77.dpdns.org"]
 PASSWORDS = ["Admin888"]
+ADMIN_PASSWORDS = ["Admin888"]
 JWT_SECRET = "codex_secret_jwt_888"
 BLACK_LIST = ""
 ENABLE_USER_CREATE_EMAIL = true
