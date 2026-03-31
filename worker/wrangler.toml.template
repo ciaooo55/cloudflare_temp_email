@@ -5,8 +5,8 @@ compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
 PREFIX = "tmp"
-DEFAULT_DOMAINS = ["ciaooo77.dpdns.org"]
-DOMAINS = ["ciaooo77.dpdns.org"]
+DEFAULT_DOMAINS = ["ciaooo55.looo.cloud"]
+DOMAINS = ["ciaooo55.looo.cloud"]
 PASSWORDS = ["Admin888"]
 ADMIN_PASSWORDS = ["Admin888"]
 JWT_SECRET = "codex_secret_jwt_888"
@@ -18,4 +18,4 @@ ENABLE_AUTO_REPLY = false
 [[d1_databases]]
 binding = "DB"
 database_name = "temp-mail-db"
-database_id = "30b38285-467a-4c33-98d0-636217bc3b46"
+database_id = "58fe10e5-1bf3-4595-b13c-9ad63cd3ee4c"
