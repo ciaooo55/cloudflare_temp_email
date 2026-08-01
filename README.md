@@ -1,6 +1,19 @@
 <!-- markdownlint-disable-file MD033 MD045 -->
 # Cloudflare 临时邮箱 - 免费搭建临时邮件服务
 
+## 项目速览
+
+| 项目 | 说明 |
+| --- | --- |
+| 中文名称 | Cloudflare 临时邮箱 |
+| GitHub 仓库名 | `cloudflare_temp_email` |
+| 名称状态 | 保持当前名称，本轮没有改名 |
+| 主要用途 | 使用 Cloudflare Email Routing、Workers、Pages 和数据库搭建可收发的临时邮箱服务 |
+| 主要组成 | Worker 后端、前端、邮件解析、数据库脚本、SMTP 代理和部署文档 |
+| 适合人群 | 有自己的域名，并愿意自行维护 Cloudflare 配置的用户 |
+
+> 部署前应完整阅读官方部署文档。不要把 Cloudflare 密钥、管理员密码、真实域名配置或邮件数据提交到仓库；公开服务还应设置访问控制、限流和滥用防护。
+
 <p align="center">
   <a href="https://temp-mail-docs.awsl.uk" target="_blank">
     <img alt="docs" src="https://img.shields.io/badge/docs-grey?logo=vitepress">
