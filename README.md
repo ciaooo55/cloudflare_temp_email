@@ -1,7 +1,7 @@
 <!-- markdownlint-disable-file MD033 MD045 -->
 # Cloudflare 临时邮箱 - 免费搭建临时邮件服务
 
-## 项目速览
+## 📌 项目速览
 
 | 项目 | 说明 |
 | --- | --- |
@@ -15,6 +15,12 @@
 > 部署前应完整阅读官方部署文档。不要把 Cloudflare 密钥、管理员密码、真实域名配置或邮件数据提交到仓库；公开服务还应设置访问控制、限流和滥用防护。
 
 <p align="center">
+  <a href="https://github.com/dreamhunter2333/cloudflare_temp_email" target="_blank">
+    <img alt="upstream" src="https://img.shields.io/badge/上游项目-dreamhunter2333%2Fcloudflare__temp__email-181717?logo=github">
+  </a>
+  <a href="https://github.com/ciaooo55/cloudflare_temp_email/commits/main" target="_blank">
+    <img alt="fork last commit" src="https://img.shields.io/github/last-commit/ciaooo55/cloudflare_temp_email?label=本仓库最后提交">
+  </a>
   <a href="https://temp-mail-docs.awsl.uk" target="_blank">
     <img alt="docs" src="https://img.shields.io/badge/docs-grey?logo=vitepress">
   </a>
@@ -55,7 +61,7 @@
 - **现代化界面** - 响应式设计，支持多语言，操作简便
 - **地址密码** - 支持为邮箱地址设置独立密码，增强安全性 (通过 `ENABLE_ADDRESS_PASSWORD` 启用)
 
-## 部署文档 - 快速开始
+## 🚀 部署文档 - 快速开始
 
 [部署文档](https://temp-mail-docs.awsl.uk) | [Github Action 部署文档](https://temp-mail-docs.awsl.uk/zh/guide/actions/github-action.html)
 
@@ -63,11 +69,21 @@
   <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare Workers" height="32">
 </a>
 
-## 更新日志
+### 基本使用流程
+
+1. 准备一个已接入 Cloudflare 的域名，并先完整阅读部署文档。
+2. 配置 Email Routing、数据库与 Worker 环境变量，再部署后端 Worker。
+3. 部署 Pages 前端并连接后端地址；需要发信时再按文档配置 DKIM 与相关权限。
+4. 首次上线后立即修改管理员密码，检查地址访问控制、限流和公开注册策略。
+5. 先用测试邮箱验证收信、验证码解析、附件与删除流程，再决定是否对外开放。
+
+日常使用时，通过前端创建或选择临时地址、查看收到的邮件；管理员功能、发信、Webhook、Telegram Bot 和 SMTP 代理均为可选能力，应按实际需要启用。
+
+## 📝 更新日志
 
 查看 [CHANGELOG](CHANGELOG.md) 了解最新更新内容。
 
-## 在线体验
+## 🌐 在线体验
 
 立即体验 → [https://mail.awsl.uk/](https://mail.awsl.uk/)
 
@@ -113,7 +129,7 @@
 
 </details>
 
-## 核心功能
+## ✨ 核心功能
 
 <details open>
 <summary>核心功能详情（点击收缩/展开）</summary>
@@ -165,7 +181,7 @@
 
 </details>
 
-## 技术架构
+## 🏗️ 技术架构
 
 <details>
 <summary>技术架构详情（点击收缩/展开）</summary>
@@ -197,7 +213,7 @@
 
 </details>
 
-### 提醒
+### ⚠️ 提醒
 
 - 在Resend添加域名记录时，如果您域名解析服务商正在托管您的3级域名a.b.com，请删除Resend生成的默认name中二级域名前缀b，否则将会添加a.b.b.com，导致验证失败。添加记录后，可通过
 ```bash
@@ -205,6 +221,6 @@ nslookup -qt="mx" a.b.com 1.1.1.1
 ```
 进行验证。 
 
-## 加入社区
+## 💬 加入社区
 
 - [Telegram](https://t.me/cloudflare_temp_email)
