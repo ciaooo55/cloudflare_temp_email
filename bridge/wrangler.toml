@@ -1,0 +1,7 @@
+name = "cross-account-mail-bridge"
+main = "worker.mjs"
+account_id = "acf6efdf13993a01b64cedde1aed676d"
+compatibility_date = "2025-04-01"
+
+[vars]
+BRIDGE_DESTINATION = "mail@ciaooo55.de5.net"

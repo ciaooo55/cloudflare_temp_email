@@ -13,7 +13,26 @@ import { EmailRuleSettings } from "../models";
 import { CONSTANTS } from "../constants";
 
 
+async function getRecipient(message: ForwardableEmailMessage, env: Bindings): Promise<string> {
+    const recipient = message.headers.get("X-Original-Recipient");
+    const signature = message.headers.get("X-Original-Recipient-Signature");
+    if (!env.BRIDGE_SECRET || !env.BRIDGE_DESTINATION ||
+        message.to.toLowerCase() !== env.BRIDGE_DESTINATION.toLowerCase() ||
+        !recipient ||
+        !signature || !/^[0-9a-f]{64}$/i.test(signature)) {
+        return message.to;
+    }
+    const key = await crypto.subtle.importKey(
+        "raw", new TextEncoder().encode(env.BRIDGE_SECRET),
+        { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
+    );
+    const signatureBytes = Uint8Array.from(signature.match(/.{2}/g)!, byte => parseInt(byte, 16));
+    return await crypto.subtle.verify("HMAC", key, signatureBytes, new TextEncoder().encode(recipient))
+        ? recipient : message.to;
+}
+
 async function email(message: ForwardableEmailMessage, env: Bindings, ctx: ExecutionContext) {
+    const recipient = await getRecipient(message, env);
     if (await isBlocked(message.from, env)) {
         message.setReject("Reject from address");
         console.log(`Reject message from ${message.from} to ${message.to}`);
@@ -26,7 +45,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // check if junk mail
     try {
-        const is_junk = await check_if_junk_mail(env, message.to, parsedEmailContext, message.headers.get("Message-ID"));
+        const is_junk = await check_if_junk_mail(env, recipient, parsedEmailContext, message.headers.get("Message-ID"));
         if (is_junk) {
             message.setReject("Junk mail");
             console.log(`Junk mail from ${message.from} to ${message.to}`);
@@ -44,7 +63,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         if (emailRuleSettings?.blockReceiveUnknowAddressEmail) {
             const db_address_id = await env.DB.prepare(
                 `SELECT id FROM address where name = ? `
-            ).bind(message.to).first("id");
+            ).bind(recipient).first("id");
             if (!db_address_id) {
                 message.setReject("Unknown address");
                 console.log(`Unknown address mail from ${message.from} to ${message.to}`);
@@ -57,7 +76,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
 
     // remove attachment if configured or size > 2MB
     try {
-        await remove_attachment_if_need(env, parsedEmailContext, message.from, message.to, message.rawSize);
+        await remove_attachment_if_need(env, parsedEmailContext, message.from, recipient, message.rawSize);
     } catch (error) {
         console.error("remove attachment error", error);
     }
@@ -68,7 +87,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         const { success } = await env.DB.prepare(
             `INSERT INTO raw_mails (source, address, raw, message_id) VALUES (?, ?, ?, ?)`
         ).bind(
-            message.from, message.to, parsedEmailContext.rawEmail, message_id
+            message.from, recipient, parsedEmailContext.rawEmail, message_id
         ).run();
         if (!success) {
             message.setReject(`Failed save message to ${message.to}`);
@@ -80,13 +99,13 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     }
 
     // forward email
-    await forwardEmail(message, env);
+    await forwardEmail(message, env, recipient);
 
     // send email to telegram
     try {
         await sendMailToTelegram(
             { env: env } as Context<HonoCustomType>,
-            message.to, parsedEmailContext, message_id);
+            recipient, parsedEmailContext, message_id);
     } catch (error) {
         console.error("send mail to telegram error", error);
     }
@@ -95,7 +114,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     try {
         await triggerWebhook(
             { env: env } as Context<HonoCustomType>,
-            message.to, parsedEmailContext, message_id
+            recipient, parsedEmailContext, message_id
         );
     } catch (error) {
         console.error("send webhook error", error);
@@ -107,7 +126,7 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
         const parsedText = parsedEmail?.text ?? ""
         const rpcEmail: RPCEmailMessage = {
             from: message.from,
-            to: message.to,
+            to: recipient,
             rawEmail: rawEmail,
             headers: message.headers
         }
@@ -117,10 +136,10 @@ async function email(message: ForwardableEmailMessage, env: Bindings, ctx: Execu
     }
 
     // auto reply email
-    await auto_reply(message, env);
+    if (recipient === message.to) await auto_reply(message, env);
 
     // AI email content extraction
-    await extractEmailInfo(parsedEmailContext, env, message_id, message.to);
+    await extractEmailInfo(parsedEmailContext, env, message_id, recipient);
 }
 
 export { email }

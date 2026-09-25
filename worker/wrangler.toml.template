@@ -1,19 +1,14 @@
 name = "cloudflaretempemail"
 main = "src/worker.ts"
+account_id = "59b8c62e6c28c08dbd13cb96e10210e4"
 compatibility_date = "2025-04-01"
 compatibility_flags = [ "nodejs_compat" ]
+keep_vars = true
 
 [vars]
-PREFIX = "tmp"
-DEFAULT_DOMAINS = ["ciaooo55.looo.cloud"]
-DOMAINS = ["ciaooo55.looo.cloud"]
-PASSWORDS = ["Admin888"]
-ADMIN_PASSWORDS = ["Admin888"]
-JWT_SECRET = "codex_secret_jwt_888"
-BLACK_LIST = ""
-ENABLE_USER_CREATE_EMAIL = true
-ENABLE_USER_DELETE_EMAIL = true
-ENABLE_AUTO_REPLY = false
+BRIDGE_DESTINATION = "mail@ciaooo55.de5.net"
+DEFAULT_DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net", "free555.de5.net", "free55.de5.net", "free5.us.ci", "kkk88.ccwu.cc", "yyy22.de5.net", "ciaooo66.dpdns.org", "ciaooo77.dpdns.org", "ciaooo77.us.ci"]
+DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net", "free555.de5.net", "free55.de5.net", "free5.us.ci", "kkk88.ccwu.cc", "yyy22.de5.net", "ciaooo66.dpdns.org", "ciaooo77.dpdns.org", "ciaooo77.us.ci"]
 
 [[d1_databases]]
 binding = "DB"
