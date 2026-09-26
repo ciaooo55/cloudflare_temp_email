@@ -410,32 +410,6 @@ const parseMail = async (
     }
 }
 
-const deletePrefix = `${CONSTANTS.TG_KV_PREFIX}:delete:`;
-
-export async function deleteExpiredTelegramMails(env: Bindings) {
-    if (!env.KV || !env.TELEGRAM_BOT_TOKEN) return;
-    // ponytail: process one page per minute; paginate if notifications exceed 100 per minute.
-    const { keys } = await env.KV.list({ prefix: deletePrefix, limit: 100 });
-    const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
-    for (const key of keys) {
-        if (Number(key.name.slice(deletePrefix.length, deletePrefix.length + 13)) > Date.now()) break;
-        const metadata = key.metadata as { chatId?: string, messageId?: number } | undefined;
-        if (!metadata?.chatId || !metadata?.messageId) {
-            await env.KV.delete(key.name);
-            continue;
-        }
-        try {
-            await bot.telegram.deleteMessage(metadata.chatId, metadata.messageId);
-            await env.KV.delete(key.name);
-        } catch (error) {
-            const code = (error as { response?: { error_code?: number } }).response?.error_code;
-            if (code === 400 || code === 403) await env.KV.delete(key.name);
-            else console.error("Telegram mail auto-delete failed", error);
-        }
-    }
-}
-
-
 export async function sendMailToTelegram(
     c: Context<HonoCustomType>, address: string,
     parsedEmailContext: ParsedEmailContext,
@@ -469,30 +443,15 @@ export async function sendMailToTelegram(
             url.searchParams.set("mail_id", mailId);
             buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
         }
-        const sent = await bot.telegram.sendMessage(targetUserId, mail, {
+        await bot.telegram.sendMessage(targetUserId, mail, {
             ...Markup.inlineKeyboard([...buttons])
         });
-        const deleteMinutes = settings?.autoDeleteMinutes;
-        const scheduleDeletion = async (messageId: number) => {
-            if (!isGlobalPush || typeof deleteMinutes !== "number" || !Number.isInteger(deleteMinutes) || deleteMinutes <= 0 || deleteMinutes >= 2880) return;
-            const due = Date.now() + deleteMinutes * 60_000;
-            try {
-                await c.env.KV.put(`${deletePrefix}${due}:${sent.chat.id}:${messageId}`, "", {
-                    metadata: { chatId: String(sent.chat.id), messageId },
-                    expirationTtl: 48 * 60 * 60,
-                });
-            } catch (error) {
-                console.error("Could not schedule Telegram mail deletion", error);
-            }
-        };
-        await scheduleDeletion(sent.message_id);
         // send attachments via native fetch (telegraf multipart upload is incompatible with CF Workers)
         if (getBooleanValue(c.env.ENABLE_TG_PUSH_ATTACHMENT) && attachments.length > 0) {
             const caption = isGlobalPush
                 ? `发件人：${parsedEmailContext.parsedEmail?.sender || ""}\n主题：${parsedEmailContext.parsedEmail?.subject || ""}`
                 : `From: ${parsedEmailContext.parsedEmail?.sender || ""}\nSubject: ${parsedEmailContext.parsedEmail?.subject || ""}`;
-            const attachmentIds = await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
-            for (const id of attachmentIds) await scheduleDeletion(id);
+            await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
         }
     };
 

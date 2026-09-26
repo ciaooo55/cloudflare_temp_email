@@ -74,6 +74,13 @@ jobs:
                 exit $code
             fi
           fi
+          # BACKEND_TOML may still contain the retired Telegram cleanup trigger.
+          curl --fail-with-body --silent --show-error \
+            --request PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/cloudflaretempemail/schedules" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '[]'
           echo "Deployed for tag ${{ github.ref_name }}"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

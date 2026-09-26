@@ -24,7 +24,6 @@ const { t } = useI18n({
             enableGlobalMailPush: 'Enable Global Mail Push(Manually input telegram Chat ID)',
             globalMailPushList: 'Global Mail Push Chat ID List',
             globalMailPushListTip: 'Support chat_id of private chat/group/channel. You can send a message to your bot, then visit this link to see chat_id, https://api.telegram.org/bot<Replace with your BOT TOKEN>/getUpdates',
-            autoDeleteMinutes: 'Delete mail notifications after (minutes, 0 to disable)',
         },
         zh: {
             init: '初始化',
@@ -39,7 +38,6 @@ const { t } = useI18n({
             enableGlobalMailPush: '启用全局邮件推送(手动输入邮箱管理员的 telegram Chat ID, 回车增加)',
             globalMailPushList: '全局邮件推送 Chat ID 列表',
             globalMailPushListTip: '支持对话/群组/频道的 Chat ID, 您可以发送一条消息给您的机器人，然后访问此链接来查看 chat_id, https://api.telegram.org/bot<这里替换成您的 BOT TOKEN>/getUpdates',
-            autoDeleteMinutes: '邮件通知自动删除（分钟，0 为关闭）',
         }
     }
 });
@@ -75,18 +73,16 @@ class TelegramSettings {
     miniAppUrl: string;
     enableGlobalMailPush: boolean;
     globalMailPushList: string[];
-    autoDeleteMinutes: number;
 
     constructor(
         enableAllowList: boolean, allowList: string[], miniAppUrl: string,
-        enableGlobalMailPush: boolean, globalMailPushList: string[], autoDeleteMinutes = 0
+        enableGlobalMailPush: boolean, globalMailPushList: string[]
     ) {
         this.enableAllowList = enableAllowList;
         this.allowList = allowList;
         this.miniAppUrl = miniAppUrl;
         this.enableGlobalMailPush = enableGlobalMailPush;
         this.globalMailPushList = globalMailPushList;
-        this.autoDeleteMinutes = autoDeleteMinutes;
     }
 }
 
@@ -172,9 +168,6 @@ onMounted(async () => {
                 <br />
                 <n-form-item-row :label="t('miniAppUrl')">
                     <n-input v-model:value="settings.miniAppUrl"></n-input>
-                </n-form-item-row>
-                <n-form-item-row :label="t('autoDeleteMinutes')">
-                    <n-input-number v-model:value="settings.autoDeleteMinutes" :min="0" :max="2879" :precision="0" />
                 </n-form-item-row>
             </n-card>
             <pre v-if="status.fetched">{{ JSON.stringify(status, null, 2) }}</pre>

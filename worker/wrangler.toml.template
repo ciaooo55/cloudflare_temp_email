@@ -20,4 +20,4 @@ binding = "KV"
 id = "a0a27297fa2741229224f2b36aa5a78e"
 
 [triggers]
-crons = ["* * * * *"]
+crons = []
