@@ -24,12 +24,14 @@ export function extractMailHighlights(subject: string, text: string, html: strin
     ];
     const links = Array.from(new Set(urls.map(url => url.replace(/&amp;/gi, "&").replace(/[.,;!?，。；！？)\]]+$/, ""))))
         .filter(url => {
-            if (url.length > 500) return false;
             try { return ["http:", "https:"].includes(new URL(url).protocol); }
             catch { return false; }
         })
         .sort((a, b) => Number(/verify|confirm|activate|reset|login|auth|token/i.test(b)) - Number(/verify|confirm|activate|reset|login|auth|token/i.test(a)))
-        .slice(0, 3);
+        .reduce<string[]>((chosen, url) => {
+            if (chosen.length < 3 && chosen.reduce((length, link) => length + link.length, 0) + url.length <= 1800) chosen.push(url);
+            return chosen;
+        }, []);
 
     return { code, links, body };
 }

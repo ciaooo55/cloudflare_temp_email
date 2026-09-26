@@ -18,3 +18,8 @@ test("recognizes codes before or after English keywords", () => {
     assert.equal(extractMailHighlights("739201 is your verification code", "", "").code, "739201");
     assert.equal(extractMailHighlights("Status", "The code will arrive soon", "").code, "");
 });
+
+test("keeps long verification links within the Telegram message budget", () => {
+    const link = `https://example.com/verify?token=${"a".repeat(700)}`;
+    assert.deepEqual(extractMailHighlights("", link, "").links, [link]);
+});
