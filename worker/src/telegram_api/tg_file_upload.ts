@@ -6,6 +6,7 @@ export async function sendTelegramAttachments(
     attachments: ParsedEmailAttachment[],
     caption: string
 ) {
+    const messageIds: number[] = [];
     try {
         const validAttachments = attachments.filter(att => {
             if (att.content.byteLength > TG_MAX_FILE_SIZE) {
@@ -14,7 +15,7 @@ export async function sendTelegramAttachments(
             }
             return true;
         });
-        if (validAttachments.length === 0) return;
+        if (validAttachments.length === 0) return messageIds;
 
         const batchSize = 6;
         for (let i = 0; i < validAttachments.length; i += batchSize) {
@@ -41,9 +42,13 @@ export async function sendTelegramAttachments(
             if (!res.ok) {
                 const text = await res.text();
                 console.error(`Failed to send attachment batch ${i / batchSize + 1}: ${res.status} ${text.substring(0, 200)}`);
+            } else {
+                const result = await res.json() as { result?: { message_id: number }[] };
+                messageIds.push(...(result.result || []).map(message => message.message_id));
             }
         }
     } catch (e) {
         console.error("Failed to send telegram attachments:", e);
     }
+    return messageIds;
 }

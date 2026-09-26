@@ -9,6 +9,7 @@ import { TelegramSettings } from "./settings";
 import { sendTelegramAttachments } from "./tg_file_upload";
 import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress, unbindTelegramByAddress } from "./common";
 import { commonParseMail } from "../common";
+import { extractMailHighlights } from "./mail_highlights";
 import { UserFromGetMe } from "telegraf/types";
 import i18n from "../i18n";
 import { LocaleMessages } from "../i18n/type";
@@ -376,30 +377,66 @@ export async function initTelegramBotCommands(c: Context<HonoCustomType>, bot: T
 const parseMail = async (
     msgs: LocaleMessages,
     parsedEmailContext: ParsedEmailContext,
-    address: string, created_at: string | undefined | null
+    address: string, created_at: string | undefined | null,
+    chinese = false
 ) => {
     if (!parsedEmailContext.rawEmail) {
         return {};
     }
     try {
         const parsedEmail = await commonParseMail(parsedEmailContext);
-        let parsedText = parsedEmail?.text || "";
+        const highlights = chinese ? extractMailHighlights(
+            parsedEmail?.subject || "", parsedEmail?.text || "", parsedEmail?.html || ""
+        ) : null;
+        let parsedText = parsedEmail?.text || highlights?.body || "";
         if (parsedText.length && parsedText.length > 1000) {
-            parsedText = parsedEmail?.text.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}`;
+            parsedText = parsedText.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}`;
         }
         return {
             isHtml: false,
-            mail: `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
-                + `To: ${address}\n`
-                + (created_at ? `Date: ${created_at}\n` : "")
-                + `Subject: ${parsedEmail?.subject}\n`
-                + `Content:\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
+            mail: chinese
+                ? `新邮件\n收件邮箱：${address}\n发件人：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
+                    + `主题：${parsedEmail?.subject || "（无主题）"}\n`
+                    + (created_at ? `时间：${created_at}\n` : "")
+                    + (highlights?.code ? `验证码：${highlights.code}\n` : "")
+                    + (highlights?.links.length ? highlights.links.map(link => `链接：${link}`).join("\n") + "\n" : "")
+                    + `内容：\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
+                : `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
+                    + `To: ${address}\n`
+                    + (created_at ? `Date: ${created_at}\n` : "")
+                    + `Subject: ${parsedEmail?.subject}\n`
+                    + `Content:\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
         };
     } catch (e) {
         return {
             isHtml: false,
             mail: `${msgs.TgParseMailFailedMsg} ${(e as Error).message}`
         };
+    }
+}
+
+const deletePrefix = `${CONSTANTS.TG_KV_PREFIX}:delete:`;
+
+export async function deleteExpiredTelegramMails(env: Bindings) {
+    if (!env.KV || !env.TELEGRAM_BOT_TOKEN) return;
+    // ponytail: process one page per minute; paginate if notifications exceed 100 per minute.
+    const { keys } = await env.KV.list({ prefix: deletePrefix, limit: 100 });
+    const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
+    for (const key of keys) {
+        if (Number(key.name.slice(deletePrefix.length, deletePrefix.length + 13)) > Date.now()) break;
+        const metadata = key.metadata as { chatId?: string, messageId?: number } | undefined;
+        if (!metadata?.chatId || !metadata?.messageId) {
+            await env.KV.delete(key.name);
+            continue;
+        }
+        try {
+            await bot.telegram.deleteMessage(metadata.chatId, metadata.messageId);
+            await env.KV.delete(key.name);
+        } catch (error) {
+            const code = (error as { response?: { error_code?: number } }).response?.error_code;
+            if (code === 400 || code === 403) await env.KV.delete(key.name);
+            else console.error("Telegram mail auto-delete failed", error);
+        }
     }
 }
 
@@ -423,8 +460,11 @@ export async function sendMailToTelegram(
     ).bind(address, message_id).first<string>("id");
     const bot = newTelegramBot(c, c.env.TELEGRAM_BOT_TOKEN);
 
-    const buildAndSend = async (targetUserId: string, msgs: LocaleMessages) => {
-        const { mail } = await parseMail(msgs, parsedEmailContext, address, new Date().toUTCString());
+    const buildAndSend = async (targetUserId: string, msgs: LocaleMessages, isGlobalPush = false) => {
+        const createdAt = isGlobalPush
+            ? new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
+            : new Date().toUTCString();
+        const { mail } = await parseMail(msgs, parsedEmailContext, address, createdAt, isGlobalPush);
         if (!mail) return;
         const attachments = parsedEmailContext.parsedEmail?.attachments || [];
         const buttons = [];
@@ -434,20 +474,37 @@ export async function sendMailToTelegram(
             url.searchParams.set("mail_id", mailId);
             buttons.push(Markup.button.webApp(msgs.TgViewMailBtnMsg, url.toString()));
         }
-        await bot.telegram.sendMessage(targetUserId, mail, {
+        const sent = await bot.telegram.sendMessage(targetUserId, mail, {
             ...Markup.inlineKeyboard([...buttons])
         });
+        const deleteMinutes = settings?.autoDeleteMinutes;
+        const scheduleDeletion = async (messageId: number) => {
+            if (!isGlobalPush || typeof deleteMinutes !== "number" || !Number.isInteger(deleteMinutes) || deleteMinutes <= 0 || deleteMinutes >= 2880) return;
+            const due = Date.now() + deleteMinutes * 60_000;
+            try {
+                await c.env.KV.put(`${deletePrefix}${due}:${sent.chat.id}:${messageId}`, "", {
+                    metadata: { chatId: String(sent.chat.id), messageId },
+                    expirationTtl: 48 * 60 * 60,
+                });
+            } catch (error) {
+                console.error("Could not schedule Telegram mail deletion", error);
+            }
+        };
+        await scheduleDeletion(sent.message_id);
         // send attachments via native fetch (telegraf multipart upload is incompatible with CF Workers)
         if (getBooleanValue(c.env.ENABLE_TG_PUSH_ATTACHMENT) && attachments.length > 0) {
-            const caption = `From: ${parsedEmailContext.parsedEmail?.sender || ""}\nSubject: ${parsedEmailContext.parsedEmail?.subject || ""}`;
-            await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
+            const caption = isGlobalPush
+                ? `发件人：${parsedEmailContext.parsedEmail?.sender || ""}\n主题：${parsedEmailContext.parsedEmail?.subject || ""}`
+                : `From: ${parsedEmailContext.parsedEmail?.sender || ""}\nSubject: ${parsedEmailContext.parsedEmail?.subject || ""}`;
+            const attachmentIds = await sendTelegramAttachments(c.env.TELEGRAM_BOT_TOKEN, targetUserId, attachments, caption);
+            for (const id of attachmentIds) await scheduleDeletion(id);
         }
     };
 
     if (globalPush) {
         const globalMsgs = i18n.getMessages(c.env.DEFAULT_LANG || 'zh');
         for (const pushId of settings.globalMailPushList) {
-            await buildAndSend(pushId, globalMsgs);
+            await buildAndSend(pushId, globalMsgs, true);
         }
     }
 

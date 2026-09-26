@@ -4,9 +4,16 @@ import { CONSTANTS } from './constants'
 import { getJsonSetting } from './utils';
 import { CleanupSettings } from './models';
 import { executeCustomSqlCleanup } from './admin_api/cleanup_api';
+import { deleteExpiredTelegramMails } from './telegram_api/telegram';
 
 export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) {
     console.log("Scheduled event: ", event);
+    try {
+        await deleteExpiredTelegramMails(env);
+    } catch (error) {
+        console.error("Telegram mail cleanup failed", error);
+    }
+    if (event.cron === "* * * * *") return;
     const autoCleanupSetting = await getJsonSetting<CleanupSettings>(
         { env: env, } as Context<HonoCustomType>,
         CONSTANTS.AUTO_CLEANUP_KEY
