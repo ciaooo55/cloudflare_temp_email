@@ -9,7 +9,7 @@ import { TelegramSettings } from "./settings";
 import { sendTelegramAttachments } from "./tg_file_upload";
 import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress, unbindTelegramByAddress } from "./common";
 import { commonParseMail } from "../common";
-import { extractMailHighlights } from "./mail_highlights";
+import { mailBody } from "./mail_body";
 import { UserFromGetMe } from "telegraf/types";
 import i18n from "../i18n";
 import { LocaleMessages } from "../i18n/type";
@@ -385,10 +385,7 @@ const parseMail = async (
     }
     try {
         const parsedEmail = await commonParseMail(parsedEmailContext);
-        const highlights = chinese ? extractMailHighlights(
-            parsedEmail?.subject || "", parsedEmail?.text || "", parsedEmail?.html || ""
-        ) : null;
-        let parsedText = parsedEmail?.text || highlights?.body || "";
+        let parsedText = mailBody(parsedEmail?.text || "", parsedEmail?.html || "");
         if (parsedText.length && parsedText.length > 1000) {
             parsedText = parsedText.substring(0, 1000) + `\n\n...\n${msgs.TgMsgTooLongMsg}`;
         }
@@ -398,8 +395,6 @@ const parseMail = async (
                 ? `新邮件\n收件邮箱：${address}\n发件人：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
                     + `主题：${parsedEmail?.subject || "（无主题）"}\n`
                     + (created_at ? `时间：${created_at}\n` : "")
-                    + (highlights?.code ? `验证码：${highlights.code}\n` : "")
-                    + (highlights?.links.length ? highlights.links.map(link => `链接：${link}`).join("\n") + "\n" : "")
                     + `内容：\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
                 : `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
                     + `To: ${address}\n`
