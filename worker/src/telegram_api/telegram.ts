@@ -392,10 +392,14 @@ const parseMail = async (
         return {
             isHtml: false,
             mail: chinese
-                ? `新邮件\n收件邮箱：${address}\n发件人：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
+                ? `📩 新邮件\n━━━━━━━━━━━━━━\n`
                     + `主题：${parsedEmail?.subject || "（无主题）"}\n`
+                    + `收件：${address}\n`
+                    + `发件：${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
                     + (created_at ? `时间：${created_at}\n` : "")
-                    + `内容：\n${parsedText || msgs.TgParseFailedViewInAppMsg}`
+                    + `\n📄 邮件正文\n──────────────\n`
+                    + `${parsedText || msgs.TgParseFailedViewInAppMsg}\n`
+                    + `━━━━━━━━━━━━━━`
                 : `From: ${parsedEmail?.sender || msgs.TgNoSenderMsg}\n`
                     + `To: ${address}\n`
                     + (created_at ? `Date: ${created_at}\n` : "")
