@@ -14,3 +14,7 @@ DOMAINS = ["ciaooo55.looo.cloud", "bbb99.us.ci", "ca555.de5.net", "ciaoo.de5.net
 binding = "DB"
 database_name = "temp-mail-db"
 database_id = "58fe10e5-1bf3-4595-b13c-9ad63cd3ee4c"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "a0a27297fa2741229224f2b36aa5a78e"
